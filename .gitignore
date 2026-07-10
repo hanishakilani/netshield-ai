@@ -15,7 +15,7 @@ frontend/.next/
 frontend/.env.local
 
 # Datasets (too large for git)
-backend/datasets/*.csv
+backend/datasets/
 
 # OS/editor junk
 .DS_Store
