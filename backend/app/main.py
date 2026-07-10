@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from sqlalchemy import text
 from app.db.postgres import engine
+from app.db.mongodb import check_mongo_connection
 
 app = FastAPI(
     title="NetShield AI",
@@ -27,3 +28,11 @@ def db_health_check():
         return {"database": "connected"}
     except Exception as e:
         return {"database": "error", "detail": str(e)}
+
+
+@app.get("/health/mongo")
+async def mongo_health_check():
+    is_connected = await check_mongo_connection()
+    if is_connected:
+        return {"mongodb": "connected"}
+    return {"mongodb": "error"}
