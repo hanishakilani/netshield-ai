@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.db.postgres import engine
 from app.db.mongodb import check_mongo_connection
-from app.api.routes import auth, users
+from app.api.routes import auth, users, traffic
 
 app = FastAPI(
     title="NetShield AI",
@@ -21,6 +21,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(traffic.router)
 
 
 @app.get("/")
