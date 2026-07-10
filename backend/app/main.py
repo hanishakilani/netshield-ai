@@ -2,11 +2,21 @@ from fastapi import FastAPI
 from sqlalchemy import text
 from app.db.postgres import engine
 from app.db.mongodb import check_mongo_connection
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="NetShield AI",
     description="Network Anomaly Detection & Threat Monitoring System API",
     version="0.1.0",
+)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
