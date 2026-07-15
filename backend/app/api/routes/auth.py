@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from app.db.postgres import get_db
 from app.models.user import User
+from app.models.login_history import LoginHistory
 from app.schemas.user import UserCreate, UserResponse
 from app.schemas.token import Token
 from app.core.security import hash_password, verify_password, create_access_token
@@ -43,7 +44,11 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
     user = get_user_by_username(db, form_data.username)
 
     if not user or not verify_password(form_data.password, user.hashed_password):
@@ -58,6 +63,14 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This account has been deactivated",
         )
+
+    login_record = LoginHistory(
+        user_id=user.id,
+        username=user.username,
+        ip_address=request.client.host if request.client else None,
+    )
+    db.add(login_record)
+    db.commit()
 
     access_token = create_access_token(
         data={"sub": user.username, "role": user.role.value}
