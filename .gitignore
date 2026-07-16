@@ -20,3 +20,6 @@ backend/datasets/
 # OS/editor junk
 .DS_Store
 .vscode/
+
+# VS Code SQL extension query artifacts
+backend/*.sql
