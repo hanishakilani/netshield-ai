@@ -11,3 +11,5 @@ class PredictionResponse(BaseModel):
     confidence: float
     benign_probability: float
     attack_probability: float
+    risk_score: float
+    risk_level: str

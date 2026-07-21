@@ -28,6 +28,17 @@ def get_feature_columns() -> list[str]:
     return feature_columns
 
 
+def compute_risk_level(risk_score: float) -> str:
+    if risk_score >= 85:
+        return "critical"
+    elif risk_score >= 60:
+        return "high"
+    elif risk_score >= 30:
+        return "medium"
+    else:
+        return "low"
+
+
 def predict_single(features: dict) -> dict:
     model, scaler, feature_columns = load_artifacts()
 
@@ -42,10 +53,15 @@ def predict_single(features: dict) -> dict:
     prediction = model.predict(X_scaled)[0]
     probabilities = model.predict_proba(X_scaled)[0]
 
+    attack_probability = float(probabilities[1])
+    risk_score = round(attack_probability * 100, 1)
+
     return {
         "prediction": "attack" if prediction == 1 else "benign",
         "is_attack": bool(prediction == 1),
         "confidence": float(probabilities[prediction]),
         "benign_probability": float(probabilities[0]),
-        "attack_probability": float(probabilities[1]),
+        "attack_probability": attack_probability,
+        "risk_score": risk_score,
+        "risk_level": compute_risk_level(risk_score),
     }
