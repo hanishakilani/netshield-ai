@@ -1,0 +1,3 @@
+from app.ml.train_multiclass import train_and_evaluate_multiclass
+
+train_and_evaluate_multiclass()
