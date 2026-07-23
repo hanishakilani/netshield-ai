@@ -1,0 +1,3 @@
+from app.ml.feature_importance import compute_feature_importance
+
+compute_feature_importance()
