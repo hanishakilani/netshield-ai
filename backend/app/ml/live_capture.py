@@ -7,6 +7,7 @@ import numpy as np
 from scapy.all import sniff, IP, TCP, UDP
 
 from app.ml.predict import predict_single, get_feature_columns
+from app.services.alerts import create_alert_from_prediction
 
 ARTIFACTS_DIR = "datasets/processed/model_artifacts"
 MEDIANS_PATH = os.path.join(ARTIFACTS_DIR, "feature_medians.joblib")
@@ -22,7 +23,6 @@ def load_medians() -> dict:
 
 
 def flow_key(pkt):
-    """Group packets into flows using a 5-tuple, normalizing direction."""
     ip = pkt[IP]
     if pkt.haslayer(TCP) or pkt.haslayer(UDP):
         proto = "TCP" if pkt.haslayer(TCP) else "UDP"
@@ -68,9 +68,6 @@ def capture_flows(duration_seconds: int) -> dict:
 
 
 def flow_to_features(flow: dict) -> dict:
-    """Compute real values for the features we can measure; fall back to
-    training-set medians for the rest (CICFlowMeter's full feature set is
-    not fully replicated here — this is a deliberate, documented simplification)."""
     features = dict(load_medians())
 
     fwd, bwd = flow["fwd_lengths"], flow["bwd_lengths"]
@@ -108,7 +105,7 @@ def flow_to_features(flow: dict) -> dict:
     return features
 
 
-def run_live_capture(duration_seconds: int = 8) -> list[dict]:
+async def run_live_capture(duration_seconds: int = 8) -> list[dict]:
     flows = capture_flows(duration_seconds)
     required_columns = set(get_feature_columns())
 
@@ -126,6 +123,9 @@ def run_live_capture(duration_seconds: int = 8) -> list[dict]:
             "source_ip": src_ip, "dest_ip": dst_ip,
             "src_port": src_port, "dst_port": dst_port, "protocol": proto,
         })
+
+        await create_alert_from_prediction(prediction, source="live_capture")
+
         results.append(prediction)
 
     results.sort(key=lambda r: r["risk_score"], reverse=True)

@@ -1,11 +1,12 @@
 import pandas as pd
 from app.ml.predict import predict_single
+from app.services.alerts import create_alert_from_prediction
 
 PROCESSED_PATH = "datasets/processed/cicids2017_processed.csv"
 SAMPLE_SIZE = 10
 
 
-def get_sample_predictions() -> list[dict]:
+async def get_sample_predictions() -> list[dict]:
     df = pd.read_csv(PROCESSED_PATH, nrows=50_000)
     sample = df.sample(n=SAMPLE_SIZE, random_state=None)
 
@@ -16,6 +17,9 @@ def get_sample_predictions() -> list[dict]:
         features = {c: float(row[c]) for c in feature_cols}
         prediction = predict_single(features)
         prediction["actual_label"] = row["Label"]
+
+        await create_alert_from_prediction(prediction, source="sample_prediction")
+
         results.append(prediction)
 
     return results
