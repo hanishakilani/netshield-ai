@@ -15,6 +15,9 @@ export default function Navbar() {
         <Link href="/dashboard" className="text-gray-300 hover:text-white">
           Dashboard
         </Link>
+        <Link href="/alerts" className="text-gray-300 hover:text-white">
+          Alerts
+        </Link>
         {user?.role === "admin" && (
           <Link href="/admin" className="text-gray-300 hover:text-white">
             Admin
