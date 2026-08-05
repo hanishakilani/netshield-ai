@@ -1,10 +1,34 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/app/lib/auth-context";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
+  const [openAlertCount, setOpenAlertCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!token) {
+      setOpenAlertCount(null);
+      return;
+    }
+
+    function fetchCounts() {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts/counts`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data) setOpenAlertCount(data.open);
+        })
+        .catch(() => {});
+    }
+
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 30_000);
+    return () => clearInterval(interval);
+  }, [token]);
 
   return (
     <nav className="flex items-center justify-between px-8 py-4 bg-gray-900 border-b border-gray-800">
@@ -15,8 +39,13 @@ export default function Navbar() {
         <Link href="/dashboard" className="text-gray-300 hover:text-white">
           Dashboard
         </Link>
-        <Link href="/alerts" className="text-gray-300 hover:text-white">
+        <Link href="/alerts" className="relative text-gray-300 hover:text-white">
           Alerts
+          {openAlertCount !== null && openAlertCount > 0 && (
+            <span className="absolute -top-2 -right-4 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+              {openAlertCount > 9 ? "9+" : openAlertCount}
+            </span>
+          )}
         </Link>
         {user?.role === "admin" && (
           <Link href="/admin" className="text-gray-300 hover:text-white">

@@ -115,3 +115,45 @@ async def alert_counts() -> dict:
         "critical_open": await collection.count_documents({"status": "open", "risk_level": "critical"}),
         "total": await collection.count_documents({}),
     }
+
+async def threat_intelligence_report() -> dict:
+    collection = mongo_db[ALERT_COLLECTION]
+
+    attack_type_pipeline = [
+        {"$group": {"_id": "$attack_type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10},
+    ]
+    attack_types = [
+        {"attack_type": doc["_id"] or "Unknown", "count": doc["count"]}
+        async for doc in collection.aggregate(attack_type_pipeline)
+    ]
+
+    source_ip_pipeline = [
+        {"$match": {"flow_details.source_ip": {"$ne": None}}},
+        {"$group": {
+            "_id": "$flow_details.source_ip",
+            "count": {"$sum": 1},
+            "max_risk": {"$max": "$risk_score"},
+        }},
+        {"$sort": {"count": -1}},
+        {"$limit": 10},
+    ]
+    top_sources = [
+        {"source_ip": doc["_id"], "alert_count": doc["count"], "max_risk_score": doc["max_risk"]}
+        async for doc in collection.aggregate(source_ip_pipeline)
+    ]
+
+    status_pipeline = [{"$group": {"_id": "$status", "count": {"$sum": 1}}}]
+    status_breakdown = {doc["_id"]: doc["count"] async for doc in collection.aggregate(status_pipeline)}
+
+    risk_pipeline = [{"$group": {"_id": "$risk_level", "count": {"$sum": 1}}}]
+    risk_breakdown = {doc["_id"]: doc["count"] async for doc in collection.aggregate(risk_pipeline)}
+
+    return {
+        "top_attack_types": attack_types,
+        "top_source_ips": top_sources,
+        "status_breakdown": status_breakdown,
+        "risk_level_breakdown": risk_breakdown,
+        "total_alerts": await collection.count_documents({}),
+    }

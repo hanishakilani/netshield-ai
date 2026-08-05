@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.schemas.alert import AlertStatusUpdate, AlertAssign
-from app.services.alerts import list_alerts, get_alert, update_alert_status, assign_alert, alert_counts
+from app.services.alerts import (
+    list_alerts, get_alert, update_alert_status, assign_alert,
+    alert_counts, threat_intelligence_report,
+)
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
@@ -58,3 +61,7 @@ async def assign_to_analyst(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     return alert
+
+@router.get("/reports/threat-intelligence")
+async def get_threat_intelligence_report(current_user: User = Depends(get_current_user)):
+    return await threat_intelligence_report()
