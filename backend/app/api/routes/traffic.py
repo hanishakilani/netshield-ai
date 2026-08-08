@@ -6,9 +6,10 @@ router = APIRouter(prefix="/traffic", tags=["Traffic"])
 
 PROCESSED_PATH = "datasets/processed/cicids2017_processed.csv"
 
+_cache: dict = {"data": None}
 
-@router.get("/stats")
-def get_traffic_stats():
+
+def _compute_stats() -> dict:
     if not os.path.exists(PROCESSED_PATH):
         raise HTTPException(
             status_code=404,
@@ -22,9 +23,7 @@ def get_traffic_stats():
     benign_count = total_flows - attack_count
     attack_percentage = round((attack_count / total_flows) * 100, 2)
 
-    top_labels = (
-        df["Label"].value_counts().head(6).reset_index()
-    )
+    top_labels = df["Label"].value_counts().head(6).reset_index()
     top_labels.columns = ["label", "count"]
 
     return {
@@ -34,3 +33,10 @@ def get_traffic_stats():
         "attack_percentage": attack_percentage,
         "top_labels": top_labels.to_dict(orient="records"),
     }
+
+
+@router.get("/stats")
+def get_traffic_stats():
+    if _cache["data"] is None:
+        _cache["data"] = _compute_stats()
+    return _cache["data"]

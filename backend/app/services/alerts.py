@@ -1,6 +1,9 @@
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from app.db.mongodb import mongo_db
+from app.db.postgres import SessionLocal
+from app.models.user import User, UserRole
+from app.services.notifications import send_email
 
 ALERT_COLLECTION = "alerts"
 CORRELATION_WINDOW_MINUTES = 5
@@ -10,6 +13,39 @@ ALERTABLE_LEVELS = {"high", "critical"}
 def _serialize(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
     return doc
+
+
+def _get_admin_emails() -> list[str]:
+    db = SessionLocal()
+    try:
+        admins = db.query(User).filter(User.role == UserRole.admin, User.is_active == True).all()
+        return [a.email for a in admins]
+    finally:
+        db.close()
+
+
+def _get_user_email(username: str) -> str | None:
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.username == username).first()
+        return user.email if user else None
+    finally:
+        db.close()
+
+
+def _notify_new_critical_alert(alert: dict):
+    source_ip = alert["flow_details"].get("source_ip") or "unknown source"
+    subject = f"[NetShield AI] CRITICAL alert: {alert.get('attack_type') or 'Unknown'} from {source_ip}"
+    body = (
+        f"A new critical-risk alert was created.\n\n"
+        f"Attack type: {alert.get('attack_type')}\n"
+        f"Risk score: {alert.get('risk_score')}\n"
+        f"Source IP: {source_ip}\n"
+        f"Detected at: {alert.get('created_at')}\n\n"
+        f"View it in NetShield AI: http://localhost:3000/alerts"
+    )
+    for email in _get_admin_emails():
+        send_email(email, subject, body)
 
 
 async def create_alert_from_prediction(prediction: dict, source: str) -> dict | None:
@@ -67,7 +103,12 @@ async def create_alert_from_prediction(prediction: dict, source: str) -> dict | 
     }
     result = await collection.insert_one(doc)
     doc["_id"] = result.inserted_id
-    return _serialize(doc)
+    serialized = _serialize(doc)
+
+    if serialized["risk_level"] == "critical":
+        _notify_new_critical_alert(serialized)
+
+    return serialized
 
 
 async def list_alerts(status: str | None = None, risk_level: str | None = None, limit: int = 100) -> list[dict]:
@@ -105,7 +146,23 @@ async def assign_alert(alert_id: str, assigned_to: str) -> dict | None:
     collection = mongo_db[ALERT_COLLECTION]
     await collection.update_one({"_id": ObjectId(alert_id)}, {"$set": {"assigned_to": assigned_to}})
     doc = await collection.find_one({"_id": ObjectId(alert_id)})
-    return _serialize(doc) if doc else None
+    if not doc:
+        return None
+
+    serialized = _serialize(doc)
+    email = _get_user_email(assigned_to)
+    if email:
+        subject = f"[NetShield AI] Alert assigned to you: {serialized.get('attack_type') or 'Unknown'}"
+        body = (
+            f"An alert has been assigned to you.\n\n"
+            f"Attack type: {serialized.get('attack_type')}\n"
+            f"Risk level: {serialized.get('risk_level')}\n"
+            f"Source IP: {serialized['flow_details'].get('source_ip')}\n\n"
+            f"View it: http://localhost:3000/alerts"
+        )
+        send_email(email, subject, body)
+
+    return serialized
 
 
 async def alert_counts() -> dict:
@@ -115,6 +172,7 @@ async def alert_counts() -> dict:
         "critical_open": await collection.count_documents({"status": "open", "risk_level": "critical"}),
         "total": await collection.count_documents({}),
     }
+
 
 async def threat_intelligence_report() -> dict:
     collection = mongo_db[ALERT_COLLECTION]

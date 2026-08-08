@@ -47,6 +47,9 @@ export default function Navbar() {
             </span>
           )}
         </Link>
+        <Link href="/reports" className="text-gray-300 hover:text-white">
+  Reports
+</Link>
         {user?.role === "admin" && (
           <Link href="/admin" className="text-gray-300 hover:text-white">
             Admin
