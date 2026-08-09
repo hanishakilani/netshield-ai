@@ -13,19 +13,19 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      await login(username, password);
-      router.push("/dashboard");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setIsSubmitting(false);
-    }
+ async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  setError(null);
+  setIsSubmitting(true);
+  try {
+    await login(username, password);
+    router.push("/overview");
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Something went wrong");
+  } finally {
+    setIsSubmitting(false);
   }
+}
 
   return (
     <main className="min-h-screen bg-gray-950 text-white flex items-center justify-center px-4">

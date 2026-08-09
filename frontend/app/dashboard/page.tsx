@@ -13,6 +13,7 @@ import {
 } from "chart.js";
 import RequireAuth from "@/app/components/RequireAuth";
 import { useAuth } from "@/app/lib/auth-context";
+import RequireRole from "@/app/components/RequireRole";
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -320,7 +321,9 @@ function DashboardContent() {
 export default function Dashboard() {
   return (
     <RequireAuth>
-      <DashboardContent />
+      <RequireRole allowedRoles={["soc_analyst", "admin"]}>
+        <DashboardContent />
+      </RequireRole>
     </RequireAuth>
   );
 }

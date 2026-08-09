@@ -39,22 +39,32 @@ export default function Navbar() {
         <Link href="/dashboard" className="text-gray-300 hover:text-white">
           Dashboard
         </Link>
+    <Link href="/overview" className="text-gray-300 hover:text-white">
+  Overview
+</Link>    
+{(user?.role === "soc_analyst" || user?.role === "admin") && (
+  <Link href="/dashboard" className="text-gray-300 hover:text-white">
+    Analyst Dashboard
+  </Link>
+)}
         <Link href="/alerts" className="relative text-gray-300 hover:text-white">
-          Alerts
-          {openAlertCount !== null && openAlertCount > 0 && (
-            <span className="absolute -top-2 -right-4 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-              {openAlertCount > 9 ? "9+" : openAlertCount}
-            </span>
-          )}
-        </Link>
-        <Link href="/reports" className="text-gray-300 hover:text-white">
-  Reports
+  Alerts
+  {openAlertCount !== null && openAlertCount > 0 && (
+    <span className="absolute -top-2 -right-4 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+      {openAlertCount > 9 ? "9+" : openAlertCount}
+    </span>
+  )}
 </Link>
-        {user?.role === "admin" && (
-          <Link href="/admin" className="text-gray-300 hover:text-white">
-            Admin
-          </Link>
-        )}
+{(user?.role === "soc_analyst" || user?.role === "admin") && (
+  <Link href="/reports" className="text-gray-300 hover:text-white">
+    Reports
+  </Link>
+)}
+{user?.role === "admin" && (
+  <Link href="/admin" className="text-gray-300 hover:text-white">
+    Admin
+  </Link>
+)}
         {user ? (
           <>
             <span className="text-gray-400">
