@@ -4,6 +4,7 @@ from app.db.mongodb import mongo_db
 from app.db.postgres import SessionLocal
 from app.models.user import User, UserRole
 from app.services.notifications import send_email
+from app.ws.manager import manager
 
 ALERT_COLLECTION = "alerts"
 CORRELATION_WINDOW_MINUTES = 5
@@ -85,7 +86,9 @@ async def create_alert_from_prediction(prediction: dict, source: str) -> dict | 
             },
         )
         updated = await collection.find_one({"_id": existing["_id"]})
-        return _serialize(updated)
+        serialized = _serialize(updated)
+        await manager.broadcast({"type": "alert_updated", "alert": serialized})
+        return serialized
 
     doc = {
         "created_at": now,
@@ -108,6 +111,7 @@ async def create_alert_from_prediction(prediction: dict, source: str) -> dict | 
     if serialized["risk_level"] == "critical":
         _notify_new_critical_alert(serialized)
 
+    await manager.broadcast({"type": "alert_created", "alert": serialized})
     return serialized
 
 
@@ -139,7 +143,12 @@ async def update_alert_status(alert_id: str, status: str, note: str | None, auth
 
     await collection.update_one({"_id": ObjectId(alert_id)}, update)
     doc = await collection.find_one({"_id": ObjectId(alert_id)})
-    return _serialize(doc) if doc else None
+    if not doc:
+        return None
+
+    serialized = _serialize(doc)
+    await manager.broadcast({"type": "alert_updated", "alert": serialized})
+    return serialized
 
 
 async def assign_alert(alert_id: str, assigned_to: str) -> dict | None:
@@ -162,6 +171,7 @@ async def assign_alert(alert_id: str, assigned_to: str) -> dict | None:
         )
         send_email(email, subject, body)
 
+    await manager.broadcast({"type": "alert_updated", "alert": serialized})
     return serialized
 
 

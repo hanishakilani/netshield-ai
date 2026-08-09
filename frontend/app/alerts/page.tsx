@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import RequireAuth from "@/app/components/RequireAuth";
 import { useAuth } from "@/app/lib/auth-context";
+import { useAlertsSocket } from "@/app/lib/alerts-socket-context";
 
 type Alert = {
   id: string;
@@ -42,6 +43,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 function AlertsContent() {
   const { token } = useAuth();
+  const { lastEvent, connected } = useAlertsSocket();
   const [alerts, setAlerts] = useState<Alert[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -69,6 +71,10 @@ function AlertsContent() {
   useEffect(() => {
     loadAlerts();
   }, [loadAlerts]);
+  useEffect(() => {
+  if (lastEvent) loadAlerts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [lastEvent]);
 
   async function updateStatus(alertId: string, status: string) {
     if (!token) return;
@@ -123,6 +129,10 @@ function AlertsContent() {
         >
           Refresh
         </button>
+        <span className="flex items-center gap-1 text-xs text-gray-500 self-center ml-2">
+  <span className={`w-2 h-2 rounded-full ${connected ? "bg-teal-400" : "bg-gray-600"}`} />
+  {connected ? "Live updates on" : "Reconnecting..."}
+</span>
       </div>
 
       {!alerts && <p className="text-gray-400">Loading alerts...</p>}
