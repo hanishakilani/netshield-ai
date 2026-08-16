@@ -4,6 +4,7 @@ from app.db.mongodb import mongo_db
 from app.db.postgres import SessionLocal
 from app.models.user import User, UserRole
 from app.services.notifications import send_email
+from app.services.slack import maybe_send_slack_alert
 from app.ws.manager import manager
 
 ALERT_COLLECTION = "alerts"
@@ -103,6 +104,7 @@ async def create_alert_from_prediction(prediction: dict, source: str) -> dict | 
         "occurrence_count": 1,
         "notes": [],
         "flow_details": flow_details,
+        "slack_notified": False,
     }
     result = await collection.insert_one(doc)
     doc["_id"] = result.inserted_id
@@ -110,6 +112,11 @@ async def create_alert_from_prediction(prediction: dict, source: str) -> dict | 
 
     if serialized["risk_level"] == "critical":
         _notify_new_critical_alert(serialized)
+
+    slack_sent = await maybe_send_slack_alert(serialized)
+    if slack_sent:
+        await collection.update_one({"_id": result.inserted_id}, {"$set": {"slack_notified": True}})
+        serialized["slack_notified"] = True
 
     await manager.broadcast({"type": "alert_created", "alert": serialized})
     return serialized
