@@ -8,6 +8,17 @@ from app.schemas.user import UserResponse, UserRoleUpdate, UserActiveUpdate
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
+@router.get("/assignable", response_model=list[UserResponse])
+def list_assignable_users(
+    current_user: User = Depends(require_role(UserRole.soc_analyst, UserRole.admin)),
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(User)
+        .filter(User.role.in_([UserRole.soc_analyst, UserRole.admin]), User.is_active == True)
+        .order_by(User.username)
+        .all()
+    )
 
 @router.get("/me", response_model=UserResponse)
 def read_current_user(current_user: User = Depends(get_current_user)):

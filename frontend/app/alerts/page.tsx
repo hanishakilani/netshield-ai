@@ -27,6 +27,12 @@ type Alert = {
   };
 };
 
+type AssignableUser = {
+  id: string;
+  username: string;
+  role: string;
+};
+
 const RISK_COLORS: Record<string, string> = {
   low: "text-teal-400 border-teal-900",
   medium: "text-yellow-400 border-yellow-900",
@@ -50,6 +56,8 @@ function AlertsContent() {
   const [riskFilter, setRiskFilter] = useState<string>("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
+const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
+const [assignTarget, setAssignTarget] = useState<Record<string, string>>({});
 
   const loadAlerts = useCallback(() => {
     if (!token) return;
@@ -72,6 +80,15 @@ function AlertsContent() {
     loadAlerts();
   }, [loadAlerts]);
   useEffect(() => {
+  if (!token) return;
+  fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/assignable`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then((res) => res.json())
+    .then(setAssignableUsers)
+    .catch(() => {});
+}, [token]);
+  useEffect(() => {
   if (lastEvent) loadAlerts();
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [lastEvent]);
@@ -86,6 +103,17 @@ function AlertsContent() {
     setNoteText("");
     loadAlerts();
   }
+
+  async function assignAlert(alertId: string) {
+  const target = assignTarget[alertId];
+  if (!token || !target) return;
+  await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts/${alertId}/assign`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ assigned_to: target }),
+  });
+  loadAlerts();
+}
 
   if (error) {
     return (
@@ -196,6 +224,28 @@ function AlertsContent() {
                       ))}
                     </div>
                   )}
+
+<div className="flex gap-2 mb-3 items-center">
+  <select
+    value={assignTarget[alert.id] ?? ""}
+    onChange={(e) => setAssignTarget((prev) => ({ ...prev, [alert.id]: e.target.value }))}
+    className="px-2 py-1.5 rounded bg-gray-950 border border-gray-700 text-xs"
+  >
+    <option value="">Assign to...</option>
+    {assignableUsers.map((u) => (
+      <option key={u.id} value={u.username}>
+        {u.username} ({u.role === "admin" ? "Admin" : "Analyst"})
+      </option>
+    ))}
+  </select>
+  <button
+    onClick={() => assignAlert(alert.id)}
+    disabled={!assignTarget[alert.id]}
+    className="px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-xs font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+  >
+    Assign
+  </button>
+</div>
 
                   <input
                     type="text"

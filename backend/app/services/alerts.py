@@ -178,9 +178,47 @@ async def assign_alert(alert_id: str, assigned_to: str) -> dict | None:
         )
         send_email(email, subject, body)
 
+    await _log_notification(
+        assigned_to,
+        f"You were assigned a {serialized['risk_level']} alert: {serialized.get('attack_type') or 'Unknown'}",
+        alert_id=serialized["id"],
+    )
+
     await manager.broadcast({"type": "alert_updated", "alert": serialized})
     return serialized
 
+NOTIFICATIONS_COLLECTION = "notifications"
+
+
+async def _log_notification(username: str, message: str, alert_id: str | None = None):
+    await mongo_db[NOTIFICATIONS_COLLECTION].insert_one({
+        "username": username,
+        "message": message,
+        "alert_id": alert_id,
+        "created_at": datetime.now(timezone.utc),
+        "read": False,
+    })
+
+
+async def get_notifications(username: str, limit: int = 50) -> list[dict]:
+    cursor = (
+        mongo_db[NOTIFICATIONS_COLLECTION]
+        .find({"username": username})
+        .sort("created_at", -1)
+        .limit(limit)
+    )
+    results = []
+    async for doc in cursor:
+        doc["id"] = str(doc.pop("_id"))
+        results.append(doc)
+    return results
+
+
+async def mark_notifications_read(username: str):
+    await mongo_db[NOTIFICATIONS_COLLECTION].update_many(
+        {"username": username, "read": False},
+        {"$set": {"read": True}},
+    )
 
 async def alert_counts() -> dict:
     collection = mongo_db[ALERT_COLLECTION]

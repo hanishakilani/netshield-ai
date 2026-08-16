@@ -61,6 +61,11 @@ export default function Navbar() {
     Live Monitor
   </Link>
 )}
+{(user?.role === "soc_analyst" || user?.role === "admin") && (
+  <Link href="/tasks" className="text-gray-300 hover:text-white">
+    Tasks
+  </Link>
+)}
         <Link href="/alerts" className="relative text-gray-300 hover:text-white">
           Alerts
           {openAlertCount !== null && openAlertCount > 0 && (

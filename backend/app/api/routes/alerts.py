@@ -5,6 +5,7 @@ from app.schemas.alert import AlertStatusUpdate, AlertAssign
 from app.services.alerts import (
     list_alerts, get_alert, update_alert_status, assign_alert,
     alert_counts, threat_intelligence_report,
+    get_notifications, mark_notifications_read,
 )
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
@@ -32,6 +33,13 @@ async def get_alert_counts(current_user: User = Depends(get_current_user)):
 async def get_threat_intelligence_report(current_user: User = Depends(get_current_user)):
     return await threat_intelligence_report()
 
+@router.get("/mine/assigned")
+async def get_my_assigned_alerts(current_user: User = Depends(get_current_user)):
+    alerts = await list_alerts(limit=200)
+    mine = [a for a in alerts if a.get("assigned_to") == current_user.username]
+    active = [a for a in mine if a["status"] in ("open", "acknowledged")]
+    completed = [a for a in mine if a["status"] in ("resolved", "false_positive")]
+    return {"active": active, "completed": completed}
 
 @router.get("/{alert_id}")
 async def get_single_alert(alert_id: str, current_user: User = Depends(get_current_user)):
@@ -66,3 +74,13 @@ async def assign_to_analyst(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     return alert
+
+@router.get("/notifications/inbox")
+async def get_inbox(current_user: User = Depends(get_current_user)):
+    return await get_notifications(current_user.username)
+
+
+@router.post("/notifications/mark-read")
+async def mark_read(current_user: User = Depends(get_current_user)):
+    await mark_notifications_read(current_user.username)
+    return {"status": "ok"}
