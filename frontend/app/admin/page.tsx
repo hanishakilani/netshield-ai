@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import RequireAuth from "@/app/components/RequireAuth";
 import { useAuth } from "@/app/lib/auth-context";
 import { useState as useStateSlack } from "react";
+import Link from "next/link";
 
 function SlackSettings({ token }: { token: string | null }) {
   const [enabled, setEnabled] = useState(false);
@@ -119,6 +120,9 @@ function AdminContent() {
   return (
     <main className="min-h-screen bg-gray-950 text-white p-8">
       <h1 className="text-2xl font-bold mb-4">Admin panel</h1>
+      <Link href="/admin/users" className="text-blue-400 text-sm hover:underline mb-6 inline-block">
+  Manage users →
+</Link>
       <SlackSettings token={token} />
       <p className="text-gray-300">{result ?? "Checking permissions..."}</p>
     </main>
