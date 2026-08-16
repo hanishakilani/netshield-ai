@@ -63,11 +63,9 @@ export default function Navbar() {
             </span>
           )}
         </Link>
-        {(user?.role === "soc_analyst" || user?.role === "admin") && (
-          <Link href="/reports" className="text-gray-300 hover:text-white">
-            Reports
-          </Link>
-        )}
+        <Link href="/reports" className="text-gray-300 hover:text-white">
+  Reports
+</Link>
         {user?.role === "admin" && (
           <Link href="/admin" className="text-gray-300 hover:text-white">
             Admin
@@ -84,6 +82,9 @@ export default function Navbar() {
             <span className="text-gray-400">
               {user.username} <span className="text-gray-600">({user.role})</span>
             </span>
+            <Link href="/profile" className="text-gray-300 hover:text-white">
+  Profile
+</Link>
             <button
               onClick={logout}
               className="px-3 py-1.5 rounded bg-gray-800 border border-gray-700 hover:bg-gray-700 text-white"

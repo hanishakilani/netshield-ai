@@ -72,6 +72,44 @@ function ReportsContent() {
     );
   }
 
+function downloadCSV() {
+  if (!report) return;
+
+  const lines: string[] = [];
+  lines.push("NetShield AI - Threat Intelligence Report");
+  lines.push(`Generated: ${new Date().toLocaleString()}`);
+  lines.push(`Total alerts: ${report.total_alerts}`);
+  lines.push("");
+
+  lines.push("Top Attack Types");
+  lines.push("Attack Type,Count");
+  report.top_attack_types.forEach((t) => lines.push(`${t.attack_type},${t.count}`));
+  lines.push("");
+
+  lines.push("Top Source IPs");
+  lines.push("Source IP,Alert Count,Max Risk Score");
+  report.top_source_ips.forEach((s) => lines.push(`${s.source_ip},${s.alert_count},${s.max_risk_score}`));
+  lines.push("");
+
+  lines.push("Status Breakdown");
+  lines.push("Status,Count");
+  Object.entries(report.status_breakdown).forEach(([status, count]) => lines.push(`${status},${count}`));
+  lines.push("");
+
+  lines.push("Risk Level Breakdown");
+  lines.push("Risk Level,Count");
+  Object.entries(report.risk_level_breakdown).forEach(([level, count]) => lines.push(`${level},${count}`));
+
+  const csvContent = lines.join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `netshield-threat-report-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}  
+
   const attackTypeData = {
     labels: report.top_attack_types.map((t) => t.attack_type),
     datasets: [
@@ -109,8 +147,18 @@ function ReportsContent() {
 
   return (
     <main className="min-h-screen bg-gray-950 text-white p-8">
-      <h1 className="text-3xl font-bold mb-1">Threat Intelligence Report</h1>
-      <p className="text-gray-400 mb-8">Aggregated patterns across {report.total_alerts} alerts</p>
+      <div className="flex items-center justify-between mb-8">
+  <div>
+    <h1 className="text-3xl font-bold mb-1">Threat Intelligence Report</h1>
+    <p className="text-gray-400">Aggregated patterns across {report.total_alerts} alerts</p>
+  </div>
+  <button
+    onClick={downloadCSV}
+    className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-sm font-medium"
+  >
+    Download CSV
+  </button>
+</div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
