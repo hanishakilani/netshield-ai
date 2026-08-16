@@ -119,12 +119,19 @@ async def run_live_capture(duration_seconds: int = 8) -> list[dict]:
 
         prediction = predict_single(features)
         src_ip, dst_ip, src_port, dst_port, proto = key
+        packet_count = len(flow["fwd_lengths"]) + len(flow["bwd_lengths"])
+        byte_count = sum(flow["fwd_lengths"]) + sum(flow["bwd_lengths"])
+        duration_ms = round(features["Flow Duration"] / 1000, 1)
+
         prediction.update({
             "source_ip": src_ip, "dest_ip": dst_ip,
             "src_port": src_port, "dst_port": dst_port, "protocol": proto,
+            "packet_count": packet_count, "byte_count": byte_count,
+            "flow_duration_ms": duration_ms,
         })
 
-        await create_alert_from_prediction(prediction, source="live_capture")
+        alert = await create_alert_from_prediction(prediction, source="live_capture")
+        prediction["alert_created"] = alert is not None
 
         results.append(prediction)
 
