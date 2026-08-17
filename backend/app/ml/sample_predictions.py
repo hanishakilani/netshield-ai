@@ -5,9 +5,18 @@ from app.services.alerts import create_alert_from_prediction
 PROCESSED_PATH = "datasets/processed/cicids2017_processed.csv"
 SAMPLE_SIZE = 10
 
+_cached_pool: pd.DataFrame | None = None
+
+
+def _load_pool() -> pd.DataFrame:
+    global _cached_pool
+    if _cached_pool is None:
+        _cached_pool = pd.read_csv(PROCESSED_PATH, nrows=50_000)
+    return _cached_pool
+
 
 async def get_sample_predictions() -> list[dict]:
-    df = pd.read_csv(PROCESSED_PATH, nrows=50_000)
+    df = _load_pool()
     sample = df.sample(n=SAMPLE_SIZE, random_state=None)
 
     feature_cols = [c for c in df.columns if c not in ["Label", "is_attack"]]
