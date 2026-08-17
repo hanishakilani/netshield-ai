@@ -72,6 +72,11 @@ export default function Navbar() {
     Incidents
   </Link>
 )}
+{(user?.role === "soc_analyst" || user?.role === "admin") && (
+  <Link href="/threat-intel" className="text-gray-300 hover:text-white">
+    Threat Intel
+  </Link>
+)}
 
         <Link href="/alerts" className="relative text-gray-300 hover:text-white">
           Alerts
