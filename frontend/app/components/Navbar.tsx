@@ -66,6 +66,13 @@ export default function Navbar() {
     Tasks
   </Link>
 )}
+
+{(user?.role === "soc_analyst" || user?.role === "admin") && (
+  <Link href="/incidents" className="text-gray-300 hover:text-white">
+    Incidents
+  </Link>
+)}
+
         <Link href="/alerts" className="relative text-gray-300 hover:text-white">
           Alerts
           {openAlertCount !== null && openAlertCount > 0 && (

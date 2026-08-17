@@ -50,14 +50,20 @@ const STATUS_LABELS: Record<string, string> = {
 function AlertsContent() {
   const { token } = useAuth();
   const { lastEvent, connected } = useAlertsSocket();
+
   const [alerts, setAlerts] = useState<Alert[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [riskFilter, setRiskFilter] = useState<string>("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
-const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
-const [assignTarget, setAssignTarget] = useState<Record<string, string>>({});
+
+  const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
+  const [assignTarget, setAssignTarget] = useState<Record<string, string>>({});
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showIncidentForm, setShowIncidentForm] = useState(false);
+  const [incidentTitle, setIncidentTitle] = useState("");
 
   const loadAlerts = useCallback(() => {
     if (!token) return;
@@ -79,19 +85,21 @@ const [assignTarget, setAssignTarget] = useState<Record<string, string>>({});
   useEffect(() => {
     loadAlerts();
   }, [loadAlerts]);
+
   useEffect(() => {
-  if (!token) return;
-  fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/assignable`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-    .then((res) => res.json())
-    .then(setAssignableUsers)
-    .catch(() => {});
-}, [token]);
+    if (lastEvent) loadAlerts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastEvent]);
+
   useEffect(() => {
-  if (lastEvent) loadAlerts();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [lastEvent]);
+    if (!token) return;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/assignable`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then(setAssignableUsers)
+      .catch(() => {});
+  }, [token]);
 
   async function updateStatus(alertId: string, status: string) {
     if (!token) return;
@@ -105,15 +113,39 @@ const [assignTarget, setAssignTarget] = useState<Record<string, string>>({});
   }
 
   async function assignAlert(alertId: string) {
-  const target = assignTarget[alertId];
-  if (!token || !target) return;
-  await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts/${alertId}/assign`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ assigned_to: target }),
-  });
-  loadAlerts();
-}
+    const target = assignTarget[alertId];
+    if (!token || !target) return;
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts/${alertId}/assign`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ assigned_to: target }),
+    });
+    loadAlerts();
+  }
+
+  function toggleSelect(alertId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(alertId)) next.delete(alertId);
+      else next.add(alertId);
+      return next;
+    });
+  }
+
+  async function createIncident() {
+    if (!token || selectedIds.size === 0 || !incidentTitle.trim()) return;
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/incidents/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ title: incidentTitle, alert_ids: Array.from(selectedIds) }),
+    });
+    if (res.ok) {
+      setSelectedIds(new Set());
+      setIncidentTitle("");
+      setShowIncidentForm(false);
+      window.alert("Incident created — view it on the Incidents page.");
+    }
+  }
 
   if (error) {
     return (
@@ -128,7 +160,44 @@ const [assignTarget, setAssignTarget] = useState<Record<string, string>>({});
       <h1 className="text-3xl font-bold mb-1">Alert Queue</h1>
       <p className="text-gray-400 mb-6">Threat alerts generated from AI model predictions</p>
 
-      <div className="flex gap-3 mb-6">
+      {selectedIds.size > 0 && (
+        <div className="bg-blue-950 border border-blue-800 rounded-lg p-4 mb-4 flex items-center gap-3">
+          <span className="text-sm text-blue-200">{selectedIds.size} alert(s) selected</span>
+          {!showIncidentForm ? (
+            <button
+              onClick={() => setShowIncidentForm(true)}
+              className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-xs font-medium"
+            >
+              Create incident from selection
+            </button>
+          ) : (
+            <>
+              <input
+                type="text"
+                placeholder="Incident title"
+                value={incidentTitle}
+                onChange={(e) => setIncidentTitle(e.target.value)}
+                className="px-2 py-1.5 rounded bg-gray-950 border border-gray-700 text-xs flex-1 max-w-xs"
+              />
+              <button
+                onClick={createIncident}
+                disabled={!incidentTitle.trim()}
+                className="px-3 py-1.5 rounded bg-teal-700 hover:bg-teal-600 text-xs font-medium disabled:opacity-30"
+              >
+                Create
+              </button>
+              <button
+                onClick={() => setShowIncidentForm(false)}
+                className="text-xs text-gray-400 hover:underline"
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-3 mb-6 items-center">
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -157,10 +226,11 @@ const [assignTarget, setAssignTarget] = useState<Record<string, string>>({});
         >
           Refresh
         </button>
+
         <span className="flex items-center gap-1 text-xs text-gray-500 self-center ml-2">
-  <span className={`w-2 h-2 rounded-full ${connected ? "bg-teal-400" : "bg-gray-600"}`} />
-  {connected ? "Live updates on" : "Reconnecting..."}
-</span>
+          <span className={`w-2 h-2 rounded-full ${connected ? "bg-teal-400" : "bg-gray-600"}`} />
+          {connected ? "Live updates on" : "Reconnecting..."}
+        </span>
       </div>
 
       {!alerts && <p className="text-gray-400">Loading alerts...</p>}
@@ -176,25 +246,36 @@ const [assignTarget, setAssignTarget] = useState<Record<string, string>>({});
               key={alert.id}
               className={`bg-gray-900 border rounded-lg p-4 ${RISK_COLORS[alert.risk_level].split(" ")[1]}`}
             >
-              <div
-                className="flex items-center justify-between cursor-pointer"
-                onClick={() => setExpandedId(isExpanded ? null : alert.id)}
-              >
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <span className={`font-bold uppercase text-xs px-2 py-1 rounded ${RISK_COLORS[alert.risk_level]} border`}>
-                    {alert.risk_level}
-                  </span>
-                  <span className="font-medium">{alert.attack_type ?? "Unknown"}</span>
-                  <span className="text-gray-500 text-sm">
-                    {alert.flow_details.source_ip ?? "unknown source"}
-                  </span>
-                  {alert.occurrence_count > 1 && (
-                    <span className="text-xs bg-gray-800 px-2 py-0.5 rounded text-gray-400">
-                      ×{alert.occurrence_count}
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(alert.id)}
+                    onChange={() => toggleSelect(alert.id)}
+                    className="w-4 h-4"
+                  />
+                  <div
+                    className="flex items-center gap-4 cursor-pointer flex-1"
+                    onClick={() => setExpandedId(isExpanded ? null : alert.id)}
+                  >
+                    <span className={`font-bold uppercase text-xs px-2 py-1 rounded ${RISK_COLORS[alert.risk_level]} border`}>
+                      {alert.risk_level}
                     </span>
-                  )}
+                    <span className="font-medium">{alert.attack_type ?? "Unknown"}</span>
+                    <span className="text-gray-500 text-sm">
+                      {alert.flow_details.source_ip ?? "unknown source"}
+                    </span>
+                    {alert.occurrence_count > 1 && (
+                      <span className="text-xs bg-gray-800 px-2 py-0.5 rounded text-gray-400">
+                        ×{alert.occurrence_count}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div
+                  className="flex items-center gap-4 cursor-pointer"
+                  onClick={() => setExpandedId(isExpanded ? null : alert.id)}
+                >
                   <span className="text-gray-400 text-sm">{STATUS_LABELS[alert.status]}</span>
                   <span className="text-gray-600 text-xs">
                     {new Date(alert.last_seen).toLocaleString()}
@@ -225,27 +306,27 @@ const [assignTarget, setAssignTarget] = useState<Record<string, string>>({});
                     </div>
                   )}
 
-<div className="flex gap-2 mb-3 items-center">
-  <select
-    value={assignTarget[alert.id] ?? ""}
-    onChange={(e) => setAssignTarget((prev) => ({ ...prev, [alert.id]: e.target.value }))}
-    className="px-2 py-1.5 rounded bg-gray-950 border border-gray-700 text-xs"
-  >
-    <option value="">Assign to...</option>
-    {assignableUsers.map((u) => (
-      <option key={u.id} value={u.username}>
-        {u.username} ({u.role === "admin" ? "Admin" : "Analyst"})
-      </option>
-    ))}
-  </select>
-  <button
-    onClick={() => assignAlert(alert.id)}
-    disabled={!assignTarget[alert.id]}
-    className="px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-xs font-medium disabled:opacity-30 disabled:cursor-not-allowed"
-  >
-    Assign
-  </button>
-</div>
+                  <div className="flex gap-2 mb-3 items-center">
+                    <select
+                      value={assignTarget[alert.id] ?? ""}
+                      onChange={(e) => setAssignTarget((prev) => ({ ...prev, [alert.id]: e.target.value }))}
+                      className="px-2 py-1.5 rounded bg-gray-950 border border-gray-700 text-xs"
+                    >
+                      <option value="">Assign to...</option>
+                      {assignableUsers.map((u) => (
+                        <option key={u.id} value={u.username}>
+                          {u.username} ({u.role === "admin" ? "Admin" : "Analyst"})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => assignAlert(alert.id)}
+                      disabled={!assignTarget[alert.id]}
+                      className="px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-xs font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      Assign
+                    </button>
+                  </div>
 
                   <input
                     type="text"
