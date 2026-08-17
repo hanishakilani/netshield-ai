@@ -4,15 +4,15 @@ services:
     container_name: netshield-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: netshield_user
-      POSTGRES_PASSWORD: netshield_pass
-      POSTGRES_DB: netshield_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U netshield_user -d netshield_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -35,8 +35,9 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      DATABASE_URL: postgresql://netshield_user:netshield_pass@postgres:5432/netshield_db
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       MONGO_URL: mongodb://mongodb:27017
+      ENVIRONMENT: ${ENVIRONMENT}
     volumes:
       - ./backend/datasets:/app/datasets
     depends_on:

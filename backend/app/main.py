@@ -4,15 +4,24 @@ from sqlalchemy import text
 from app.db.postgres import engine
 from app.db.mongodb import check_mongo_connection
 from app.api.routes import auth, users, traffic, predictions, alerts, ws_alerts, admin_settings, incidents, threat_intel
+from app.core.config import ENVIRONMENT
+
+
 app = FastAPI(
     title="NetShield AI",
     description="Network Anomaly Detection & Threat Monitoring System API",
     version="0.1.0",
 )
 
+allowed_origins = (
+    ["http://localhost:3000"]
+    if ENVIRONMENT == "development"
+    else ["https://your-production-domain.com"]  # update this when you actually deploy
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
