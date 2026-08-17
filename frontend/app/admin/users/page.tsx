@@ -94,9 +94,9 @@ function UserManagementContent() {
                 <tr key={u.id} className="border-t border-gray-800">
                   <td className="px-4 py-3">
                     {u.username}
-                    {u.id === currentUser?.id && (
-                      <span className="ml-2 text-xs text-gray-600">(you)</span>
-                    )}
+                    {u.username === currentUser?.username && (
+  <span className="ml-2 text-xs text-gray-600">(you)</span>
+)}
                   </td>
                   <td className="px-4 py-3 text-gray-400">{u.email}</td>
                   <td className="px-4 py-3">
@@ -121,7 +121,7 @@ function UserManagementContent() {
                   <td className="px-4 py-3">
                     <button
                       onClick={() => toggleActive(u.id, !u.is_active)}
-                      disabled={u.id === currentUser?.id}
+                     disabled={u.username === currentUser?.username}
                       className="px-3 py-1 rounded bg-gray-800 border border-gray-700 hover:bg-gray-700 text-xs disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       {u.is_active ? "Deactivate" : "Reactivate"}

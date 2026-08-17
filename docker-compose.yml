@@ -11,6 +11,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netshield_user -d netshield_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   mongodb:
     image: mongo:7
@@ -20,6 +25,37 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    container_name: netshield-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://netshield_user:netshield_pass@postgres:5432/netshield_db
+      MONGO_URL: mongodb://mongodb:27017
+    volumes:
+      - ./backend/datasets:/app/datasets
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    container_name: netshield-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:

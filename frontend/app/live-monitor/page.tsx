@@ -116,12 +116,14 @@ function LiveMonitorContent() {
   });
 
   const sorted = [...filtered].sort((a, b) => {
-    const av = a[sortKey];
-    const bv = b[sortKey];
-    if (av === bv) return 0;
-    const result = av > bv ? 1 : -1;
-    return sortDesc ? -result : result;
-  });
+  const av = a[sortKey];
+  const bv = b[sortKey];
+  if (av === bv) return 0;
+  if (av === null) return sortDesc ? 1 : -1;
+  if (bv === null) return sortDesc ? -1 : 1;
+  const result = av > bv ? 1 : -1;
+  return sortDesc ? -result : result;
+});
 
   function headerClick(key: keyof LiveFlow) {
     if (sortKey === key) {
