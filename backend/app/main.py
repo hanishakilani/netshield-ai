@@ -16,7 +16,7 @@ app = FastAPI(
 allowed_origins = (
     ["http://localhost:3000"]
     if ENVIRONMENT == "development"
-    else ["https://your-production-domain.com"]  # update this when you actually deploy
+    else ["http://13.51.199.104:3000"]
 )
 
 app.add_middleware(
